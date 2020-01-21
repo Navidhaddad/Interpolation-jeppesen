@@ -3,13 +3,14 @@ import numpy as np
 
 import codecs, json
 import scipy
+from sklearn.preprocessing import MinMaxScaler
 
 import scipy_interpolation_functions as scipy_int
 
-def read_poor_data(filename):
+def read_poor_data(filenames, objective):
   df = pd.DataFrame([])
-  for i in range(7):
-      with open('/Users/calmaleh/Desktop/school/project_course/jeppesen/ac_poor_' + str(i+1) +'.bsad') as json_file:
+  for filename in filenames:
+      with open(filename) as json_file:
           json_data = json.load(json_file)
 
       frames = []
@@ -26,9 +27,9 @@ def read_poor_data(filename):
       temp_df = temp_df[temp_df['MACH_MODE'].str.contains("Mach")]
       temp_df['MACH_MODE'] = temp_df['MACH_MODE'].map(lambda x: x.lstrip('Mach ')).astype(float)
 
-      temp_df = temp_df[['DISA','ALTITUDE','MASS','MACH_MODE','FUELFLOW']]
+      temp_df = temp_df[['DISA','ALTITUDE','MASS','MACH_MODE', objective]]
 
-      return pd.concat([df,temp_df])
+  return pd.concat([df,temp_df])
 
 def speed_converter_poor_data(df):
     TROPOPAUSE_ALT = 11000.0
@@ -51,11 +52,12 @@ def speed_converter_poor_data(df):
     df['SPEED_SOUND'] = SPEED_OF_SOUND * np.sqrt((df['ISA'] + df['DISA'])/ STD_TEMP)
 
     #df['MACH'] = round(df['MACH_'] / df['SPEED_SOUND'],4)
-    df['TAS'] = round((df['MACH_MODE'] * df['SPEED_SOUND']), 1)
+    df['SPEED'] = round((df['MACH_MODE'] * df['SPEED_SOUND']), 1) # SPEED here is TAS
+    df = df.drop(['ISA_CONDITION', 'ISA','SPEED_SOUND', 'MACH_MODE'],axis=1)
+    
+    return df
 
-    return df.drop(['ISA_CONDITION', 'ISA','SPEED_SOUND', 'MACH_MODE'],axis=1)
-
-def read_rich_data(filename):
+def read_rich_data(filename, objective):
   with open(filename) as json_file:
       json_data = json.load(json_file)
 
@@ -68,16 +70,47 @@ def read_rich_data(filename):
           frames.append(df)
 
   df = pd.concat(frames,ignore_index=True)
-  df = df[['DISA','ALTITUDE','MASS','MACH','FUELFLOW']]
+  df = df[['DISA','ALTITUDE','MASS','MACH',objective]]
+  df = df.rename(columns ={'MACH':'SPEED'})
 
   scaler = MinMaxScaler()
   df = scaler.fit_transform(df)
 
-  df = pd.DataFrame(df, columns = ['DISA','ALTITUDE','MASS','MACH','FUELFLOW'])
+  df = pd.DataFrame(df, columns = ['DISA','ALTITUDE','MASS','SPEED', objective])
+  
+  return df
 
-def pandas_interpolation(df):
+def pandas_interpolation(df, temperature, altitude, mass, speed):
+  point = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
+  
+  def closest_neighbours(df, point, nbr_neighbours):
+    temp_df = df.copy()
+    temp_df['distance'] = X_train_1.sub(point).pow(2).sum(1).pow(0.5) # euclidean distance
+    
+    df_sort_by_dist = temp_df.sort_values('distance').iloc[0:nbr_neighbours]
+    df_sort_by_dist = df_sort_by_dist.drop(['distance'],axis = 1)
+    df_sort_by_dist = df_sort_by_dist.reset_index()
+    df_sort_by_dist = df_sort_by_dist.drop(['index'], axis=1)
+    
+    return df_sort_by_dist
+  
+  df = closest_neighbours(df, point, 16)
+  
+  df_interpolated = df[0:1].append(point)
+  df_interpolated = df_interpolated.append(df[2:16])
+  
+  df_interpolated = df_interpolated.interpolate(method = 'linear')
+  point_interpolated = df_interpolated[1:2]
+  
+  return point_interpolated  
 
+def scipy_linear_interpolation(df, temperature, altitude, mass, speed):  
+  point = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
 
+  objective_interpolated = scipy_int.scipy_interpolation_linear(df, point)
 
-
-
+  if np.isnan(y_inter)== True : #Extrapolate
+      y = X_train_scipy.FUELFLOW
+      X = X_train_scipy.drop(['FUELFLOW'], axis=1)
+      point,value = scipy_int.closest_points(X,y,test,1)
+      y_inter = value
