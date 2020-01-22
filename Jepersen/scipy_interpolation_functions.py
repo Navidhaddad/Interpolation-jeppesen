@@ -4,48 +4,30 @@ import numpy as np
 import json 
 import scipy
 
-def scipy_interpolation_linear (data, interpolation_point):
-    
-    y = data.FUELFLOW
-    X = data.drop(['FUELFLOW'], axis=1)
-   
-    
-    points , values = closest_points(X,y,interpolation_point,2500)  
-                                                               
-    
-    interpolated_val = scipy.interpolate.griddata(points, values, interpolation_point, method='linear', rescale='TRUE')
-    
-
+def scipy_interpolation_linear(objective_name, data, interpolation_point):
+    points, values = closest_points(objective_name, data, interpolation_point, 2500) 
+                                                                   
+    interpolated_val = scipy.interpolate.griddata(points, values, interpolation_point, method='linear', rescale='TRUE') 
     
     return interpolated_val
 
-def scipy_interpolation_nearest (data, interpolation_point):
-    
-    y = data.FUELFLOW
-    X = data.drop(['FUELFLOW'], axis=1)
-   
-    
-    points , values = closest_points(X,y,interpolation_point,2500)  
-                                                               
-    
+def scipy_interpolation_nearest(objective_name, data, interpolation_point):   
+    points, values = closest_points(objective_name, data, interpolation_point, 16)  
+                                                                   
     interpolated_val = scipy.interpolate.griddata(points, values, interpolation_point, method='nearest', rescale='TRUE')
-    
+       
+    return interpolated_val    
 
+def closest_points(objective_name, df, interpolation_point, n):
+    temp_df = df.copy()
+    temp_df['distance'] = temp_df.sub(point).pow(2).sum(1).pow(0.5) # euclidean distance
     
-    return interpolated_val
+    df_sort_by_dist = temp_df.sort_values('distance').iloc[0:nbr_neighbours]
+    df_sort_by_dist = df_sort_by_dist.drop(['distance'],axis = 1)
+    df_sort_by_dist = df_sort_by_dist.reset_index()
+    df_sort_by_dist = df_sort_by_dist.drop(['index'], axis=1)
     
-
-def closest_points(X,y,interpolation_point, n):
-    X['distance'] = X.sub(interpolation_point).pow(2).sum(1).pow(0.5) #calculate euclidean distance
-    X = X.sort_values(['distance']).iloc[0:n] #sort
-    X = X.drop(['distance'],axis=1)
-    X = X.reset_index() 
-    X.columns = ['index_', 'DISA', 'ALTITUDE', 'MASS','MACH'] #rename columns
+    val = df_sort_by_dist[objective_name]
+    poi = df_sort_by_dist.drop([objective_name], axis=1)
     
-    y.columns = ['index_', 'FUELFLOW']
-    X = X.join(y, on = 'index_', how='left',) #join 20 nearest point with 
-                                                                #corresonding fuel flow
-    val = X['FUELFLOW']
-    poi = X.drop(['index_','FUELFLOW'], axis=1)
-    
-    return poi , val
+    return val, poi
