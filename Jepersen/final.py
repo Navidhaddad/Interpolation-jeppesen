@@ -81,11 +81,12 @@ def read_rich_data(filename, objective):
   return df
 
 def pandas_interpolation(df, objective, temperature, altitude, mass, speed):
-  point = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
+  point_data = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
+  point = pd.DataFrame(data=point_data)
   
   def closest_neighbours(df, point, nbr_neighbours):
     temp_df = df.copy()
-    temp_df['distance'] = X_train_1.sub(point).pow(2).sum(1).pow(0.5) # euclidean distance
+    temp_df['distance'] = temp_df.sub(point).pow(2).sum(1).pow(0.5) # euclidean distance
     
     df_sort_by_dist = temp_df.sort_values('distance').iloc[0:nbr_neighbours]
     df_sort_by_dist = df_sort_by_dist.drop(['distance'],axis = 1)
@@ -105,26 +106,26 @@ def pandas_interpolation(df, objective, temperature, altitude, mass, speed):
   return point_interpolated  
 
 def scipy_linear_interpolation(objective_name, df, temperature, altitude, mass, speed): 
-  point = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
+  point_data = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
+  point = pd.DataFrame(data=point_data)
 
-  objective_interpolated = scipy_int.scipy_interpolation_linear(df, point)
+  objective_interpolated = scipy_int.scipy_interpolation_linear(objective_name, df, point)
 
   # if point is not interpolated, it is null
   # counter by copying closest value
   if np.isnan(objective_interpolated)== True : 
-      y = df_interpolated.objective_name
-      x = df_interpolated.drop([objective_name], axis=1)
-      p, v = scipy_int.closest_points(x,y,point,1) # returns closest point p and its value v
-      objective_interpolated = v
+      p = scipy_int.closest_points(objective_name, df_interpolated, point, 1) # returns closest point p
+      objective_interpolated = p[objective_name]
   
   point[objective_name] = objective_interpolated
   
   return point
 
-def scipy_nearest_interpolation(df, temperature, altitude, mass, speed):
-  point = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
+def scipy_nearest_interpolation(objective_name, df, temperature, altitude, mass, speed):
+  point_data = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
+  point = pd.DataFrame(data=point_data)
   
-  objective_interpolated = scipy_int.scipy_interpolation_nearest(df, point)
+  objective_interpolated = scipy_int.scipy_interpolation_nearest(objective_name, df, point)
   
   point[objective] = objective_interpolated
   
