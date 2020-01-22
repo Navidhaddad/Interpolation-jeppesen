@@ -32,30 +32,30 @@ def read_poor_data(filenames, objective):
   return pd.concat([df,temp_df])
 
 def speed_converter_poor_data(df):
-    TROPOPAUSE_ALT = 11000.0
-    STRATOSPHERE_ALT = 20000
+  TROPOPAUSE_ALT = 11000.0
+  STRATOSPHERE_ALT = 20000
 
-    TROPOPAUSE_TEMP = 216.65
-    STD_TEMP = 288.15
+  TROPOPAUSE_TEMP = 216.65
+  STD_TEMP = 288.15
 
-    STD_LAPSE_RATE = -0.0065
+  STD_LAPSE_RATE = -0.0065
 
-    SPEED_OF_SOUND = 340.294
+  SPEED_OF_SOUND = 340.294
 
-    df['ISA_CONDITION'] = False
-    df.loc[(0 <= df['ALTITUDE']) & (df['ALTITUDE'] <= TROPOPAUSE_ALT), 'ISA_CONDITION'] = True
+  df['ISA_CONDITION'] = False
+  df.loc[(0 <= df['ALTITUDE']) & (df['ALTITUDE'] <= TROPOPAUSE_ALT), 'ISA_CONDITION'] = True
 
-    df['ISA'] = 0
+  df['ISA'] = 0
 
-    df.loc[df.ISA_CONDITION == False, 'ISA'] = TROPOPAUSE_TEMP
-    df.loc[df.ISA_CONDITION == True, 'ISA'] = round(STD_TEMP + STD_LAPSE_RATE * df[df.ISA_CONDITION == True].ALTITUDE,2)
-    df['SPEED_SOUND'] = SPEED_OF_SOUND * np.sqrt((df['ISA'] + df['DISA'])/ STD_TEMP)
+  df.loc[df.ISA_CONDITION == False, 'ISA'] = TROPOPAUSE_TEMP
+  df.loc[df.ISA_CONDITION == True, 'ISA'] = round(STD_TEMP + STD_LAPSE_RATE * df[df.ISA_CONDITION == True].ALTITUDE,2)
+  df['SPEED_SOUND'] = SPEED_OF_SOUND * np.sqrt((df['ISA'] + df['DISA'])/ STD_TEMP)
 
-    #df['MACH'] = round(df['MACH_'] / df['SPEED_SOUND'],4)
-    df['SPEED'] = round((df['MACH_MODE'] * df['SPEED_SOUND']), 1) # SPEED here is TAS
-    df = df.drop(['ISA_CONDITION', 'ISA','SPEED_SOUND', 'MACH_MODE'],axis=1)
-    
-    return df
+  #df['MACH'] = round(df['MACH_'] / df['SPEED_SOUND'],4)
+  df['SPEED'] = round((df['MACH_MODE'] * df['SPEED_SOUND']), 1) # SPEED here is TAS
+  df = df.drop(['ISA_CONDITION', 'ISA','SPEED_SOUND', 'MACH_MODE'],axis=1)
+
+  return df
 
 def read_rich_data(filename, objective):
   with open(filename) as json_file:
@@ -80,7 +80,7 @@ def read_rich_data(filename, objective):
   
   return df
 
-def pandas_interpolation(df, temperature, altitude, mass, speed):
+def pandas_interpolation(df, objective, temperature, altitude, mass, speed):
   point = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
   
   def closest_neighbours(df, point, nbr_neighbours):
@@ -104,13 +104,32 @@ def pandas_interpolation(df, temperature, altitude, mass, speed):
   
   return point_interpolated  
 
-def scipy_linear_interpolation(df, temperature, altitude, mass, speed):  
+def scipy_linear_interpolation(objective_name, df, temperature, altitude, mass, speed): 
   point = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
 
   objective_interpolated = scipy_int.scipy_interpolation_linear(df, point)
 
-  if np.isnan(y_inter)== True : #Extrapolate
-      y = X_train_scipy.FUELFLOW
-      X = X_train_scipy.drop(['FUELFLOW'], axis=1)
-      point,value = scipy_int.closest_points(X,y,test,1)
-      y_inter = value
+  # if point is not interpolated, it is null
+  # counter by copying closest value
+  if np.isnan(objective_interpolated)== True : 
+      y = df_interpolated.objective_name
+      x = df_interpolated.drop([objective_name], axis=1)
+      p, v = scipy_int.closest_points(x,y,point,1) # returns closest point p and its value v
+      objective_interpolated = v
+  
+  point[objective_name] = objective_interpolated
+  
+  return point
+
+def scipy_nearest_interpolation(df, temperature, altitude, mass, speed):
+  point = {'DISA': temperature, 'ALTITUDE': altitude, 'MASS': mass, 'SPEED': speed}
+  
+  objective_interpolated = scipy_int.scipy_interpolation_nearest(df, point)
+  
+  point[objective] = objective_interpolated
+  
+  return point
+
+
+  
+  
