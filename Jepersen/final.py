@@ -131,6 +131,20 @@ def scipy_nearest_interpolation(objective_name, df, temperature, altitude, mass,
   
   return point
 
+def scipy_speed_limit_interpolation(objective_name, df, temperature, altitude, mass):
+  df = df.drop([objective_name], axis=1)
+  
+#  group_min = df.groupby(['DISA', 'ALTITUDE', 'MASS']).min()
+#  group_max = df.groupby(['DISA', 'ALTITUDE', 'MASS']).max()
+#  df_group = pd.DataFrame(index=range(len(group_min)),columns=range(5))
 
+#  for i in range(len(out)):
+#      df_group.iloc[i] = [group_min.index[i][0],
+#                          group_min.index[i][1],
+#                          group_min.index[i][2],
+#                          group_min.iloc[i][0],
+#                          group_max.iloc[i][0]]
+
+#  df_group.columns = ['DISA', 'ALTITUDE', 'MASS', 'SPEED_MIN', 'SPEED_MAX']
   
   
